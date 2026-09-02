@@ -220,11 +220,14 @@ export default function PatientAppointmentsPage() {
     })
 
     if (bookingError) {
-      setError(`Booking failed: ${bookingError.message}`)
+      setError('Booking failed. Please try again.')
     } else {
       triggerGlobalSync({ type: 'appointment_created', patient_id: auth.patient.id })
       setShowModal(false)
       setReason('')
+      // Re-query appointments list immediately for local window update
+      const { data: updatedAppts } = await getAppointmentsForPatient(auth.patient.id)
+      setAppointments((updatedAppts as AppointmentRow[] | null) || [])
     }
     setSubmitting(false)
   }
