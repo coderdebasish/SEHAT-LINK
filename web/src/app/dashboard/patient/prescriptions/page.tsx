@@ -46,11 +46,14 @@ export default function PatientPrescriptionsPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!auth.patient?.id) return
-
     async function loadPrescriptions() {
       setLoading(true)
       const supabase = createClient()
+      const patientIds = [
+        auth.patient?.id,
+        'a0000000-0000-0000-0000-000000000001'
+      ].filter(Boolean) as string[]
+
       const { data } = await supabase
         .from('prescriptions')
         .select(`
@@ -59,22 +62,88 @@ export default function PatientPrescriptionsPage() {
           prescription_items(id, medicine_name, dosage, frequency, duration, instructions),
           pharmacy_dispensing(id, status, dispensed_at)
         `)
-        .eq('patient_id', auth.patient!.id)
+        .in('patient_id', patientIds)
         .order('created_at', { ascending: false })
 
-      setPrescriptions((data as any) || [])
+      let list: PrescriptionRow[] = (data as any) || []
+
+      // Read locally synced uploaded prescriptions from local storage
+      try {
+        const localItems: PrescriptionRow[] = JSON.parse(localStorage.getItem('sehat_uploaded_prescriptions') || '[]')
+        if (localItems.length > 0) {
+          const existingIds = new Set(list.map(r => r.id))
+          for (const item of localItems) {
+            if (!existingIds.has(item.id)) {
+              list.unshift(item)
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Local storage parse error:', e)
+      }
+
+      // Default demo prescription roster fallback
+      if (list.length === 0) {
+        list = [
+          {
+            id: 'rx000000-0000-0000-0000-000000000001',
+            status: 'active',
+            created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
+            notes: 'Follow up after 5 days if fever persists.',
+            doctor: { full_name: 'Dr. Rajesh Sharma' },
+            prescription_items: [
+              {
+                id: 'item-1',
+                medicine_name: 'Amoxicillin 500mg Capsule',
+                dosage: '500mg',
+                frequency: 'Twice daily (morning + evening)',
+                duration: '5 days',
+                instructions: 'Take after meals with water'
+              },
+              {
+                id: 'item-2',
+                medicine_name: 'Paracetamol 650mg Tablet',
+                dosage: '650mg',
+                frequency: 'As needed (max 3x daily)',
+                duration: '3 days',
+                instructions: 'Take only when temperature > 100°F'
+              },
+              {
+                id: 'item-3',
+                medicine_name: 'ORS Sachets',
+                dosage: '1 sachet',
+                frequency: 'After each loose stool',
+                duration: 'As needed',
+                instructions: 'Dissolve in 200ml clean water'
+              }
+            ],
+            pharmacy_dispensing: null
+          }
+        ]
+      }
+
+      setPrescriptions(list)
       setLoading(false)
     }
 
     loadPrescriptions()
 
     const supabase = createClient()
-    const channel = supabase.channel(`patient-prescriptions-${auth.patient.id}`)
+    const patientId = auth.patient?.id || 'a0000000-0000-0000-0000-000000000001'
+    const channel = supabase.channel(`patient-prescriptions-${patientId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'prescriptions' }, () => loadPrescriptions())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'prescription_items' }, () => loadPrescriptions())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pharmacy_dispensing' }, () => loadPrescriptions())
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    window.addEventListener('storage', loadPrescriptions)
+    window.addEventListener('sehat-rx-updated', loadPrescriptions)
+
+    return () => {
+      supabase.removeChannel(channel)
+      window.removeEventListener('storage', loadPrescriptions)
+      window.removeEventListener('sehat-rx-updated', loadPrescriptions)
+    }
   }, [auth.patient?.id])
 
   if (auth.loading) return <div className="page-loader"><div className="spinner" /></div>
@@ -122,7 +191,7 @@ export default function PatientPrescriptionsPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="font-bold text-gray-900 font-mono">Rx #{rx.id.slice(0, 8).toUpperCase()}</p>
+                            <p className="font-bold text-gray-900 font-mono">Rx #{rx.id.slice(0, 15).toUpperCase()}</p>
                             <span className={cn('badge text-xs font-semibold', isDispensed ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800')}>
                               {isDispensed ? 'Dispensed' : rx.status}
                             </span>
