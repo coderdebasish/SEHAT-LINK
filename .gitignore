@@ -1,0 +1,59 @@
+# Dependencies
+node_modules/
+**/node_modules/
+.pnpm-store/
+
+# Next.js build output
+.next/
+**/.next/
+out/
+**/out/
+build/
+**/build/
+dist/
+**/dist/
+
+# Expo / React Native
+.expo/
+**/.expo/
+.expo-shared/
+*.apk
+*.aab
+*.ipa
+
+# Environment & local config
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+*.env.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+# IDE & OS files
+.DS_Store
+*.pem
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvsopt
+*.njsproj
+*.sln
+*.sw?
+
+# Vercel
+.vercel
+
+# TypeScript build info
+*.tsbuildinfo

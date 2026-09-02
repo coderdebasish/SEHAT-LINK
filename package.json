@@ -1,0 +1,19 @@
+{
+  "name": "sehat-link",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SEHAT-LINK — Integrated Rural Healthcare Access & Care Continuity Platform",
+  "workspaces": [
+    "web",
+    "mobile",
+    "packages/*"
+  ],
+  "scripts": {
+    "web": "npm run dev --workspace=web",
+    "mobile": "npm run start --workspace=mobile",
+    "typecheck": "npm run typecheck --workspace=web"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
