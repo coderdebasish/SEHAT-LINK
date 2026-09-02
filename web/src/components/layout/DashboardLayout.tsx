@@ -1,10 +1,12 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LogOut, Bell, ChevronDown, Heart } from 'lucide-react'
+import { LogOut, Bell, ChevronDown, Heart, Zap } from 'lucide-react'
 import { cn, getInitials, ROLE_LABELS, ROLE_COLORS } from '@/lib/utils'
 import type { Profile } from '@sehat-link/types'
+import { initGlobalRealtimeListener } from '@/lib/realtimeSync'
 
 interface SidebarProps {
   profile: Profile
@@ -100,17 +102,31 @@ interface TopbarProps {
 }
 
 export function Topbar({ title, subtitle, actions, profile, onSignOut }: TopbarProps) {
+  useEffect(() => {
+    const cleanup = initGlobalRealtimeListener()
+    return () => {
+      cleanup()
+    }
+  }, [])
+
   return (
     <header className="dashboard-topbar">
       <div>
-        <h1 className="text-lg font-semibold text-gray-900 leading-none">{title}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-semibold text-gray-900 leading-none">{title}</h1>
+          <span className="badge bg-emerald-50 text-emerald-700 text-[10px] font-bold flex items-center gap-1 border border-emerald-200/60">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+            LIVE REALTIME
+          </span>
+        </div>
         {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
       </div>
       <div className="flex items-center gap-2">
         {actions}
-        <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors">
+        <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors" title="Realtime Notifications Active">
           <Bell className="w-5 h-5 text-gray-500" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full" />
         </button>
         <div className="flex items-center gap-2 pl-2 border-l border-gray-200">
           <div

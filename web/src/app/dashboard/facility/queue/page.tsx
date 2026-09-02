@@ -7,6 +7,7 @@ import {
   LayoutDashboard, Users, Calendar, FileSpreadsheet, BedDouble, Settings, UserCheck, Loader2, Package
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { subscribeGlobalSync, triggerGlobalSync } from '@/lib/realtimeSync'
 
 const NAV_ITEMS = [
   { href: '/dashboard/facility', label: 'Facility Overview', icon: LayoutDashboard },
@@ -64,12 +65,18 @@ export default function FacilityQueuePage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => loadQueue())
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    const unsubscribeGlobal = subscribeGlobalSync(loadQueue)
+
+    return () => {
+      supabase.removeChannel(channel)
+      unsubscribeGlobal()
+    }
   }, [auth.profile?.facility_id])
 
   async function updateStatus(id: string, newStatus: string) {
     const supabase = createClient()
     await supabase.from('appointments').update({ status: newStatus }).eq('id', id)
+    triggerGlobalSync({ type: 'appointment_updated', id, newStatus })
   }
 
   if (auth.loading) return <div className="page-loader"><div className="spinner" /></div>

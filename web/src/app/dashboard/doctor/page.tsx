@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { cn, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { getAppointmentsForProvider } from '@/lib/supabase/queries/appointments'
+import { subscribeGlobalSync } from '@/lib/realtimeSync'
 
 const NAV_ITEMS = [
   { href: '/dashboard/doctor', label: 'Dashboard', icon: LayoutDashboard },
@@ -111,7 +112,12 @@ function DoctorOverview({ auth }: { auth: ReturnType<typeof useRequireAuth> }) {
       }, () => loadData())
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    const unsubscribeGlobal = subscribeGlobalSync(loadData)
+
+    return () => {
+      supabase.removeChannel(channel)
+      unsubscribeGlobal()
+    }
   }, [auth.profile?.id, auth.profile?.facility_id])
 
   const statusColors: Record<string, string> = {

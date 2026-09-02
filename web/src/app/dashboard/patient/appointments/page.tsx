@@ -11,6 +11,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { getAppointmentsForPatient, createAppointment } from '@/lib/supabase/queries/appointments'
 import { formatDate, cn } from '@/lib/utils'
+import { subscribeGlobalSync, triggerGlobalSync } from '@/lib/realtimeSync'
 
 const NAV_ITEMS = [
   { href: '/dashboard/patient', label: 'My Health Card', icon: LayoutDashboard },
@@ -190,7 +191,12 @@ export default function PatientAppointmentsPage() {
       }, () => loadData())
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    const unsubscribeGlobal = subscribeGlobalSync(loadData)
+
+    return () => {
+      supabase.removeChannel(channel)
+      unsubscribeGlobal()
+    }
   }, [auth.patient?.id])
 
   async function handleBookAppointment(e: React.FormEvent) {
@@ -216,6 +222,7 @@ export default function PatientAppointmentsPage() {
     if (bookingError) {
       setError(`Booking failed: ${bookingError.message}`)
     } else {
+      triggerGlobalSync({ type: 'appointment_created', patient_id: auth.patient.id })
       setShowModal(false)
       setReason('')
     }

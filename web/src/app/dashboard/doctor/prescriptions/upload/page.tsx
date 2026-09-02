@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { triggerGlobalSync } from '@/lib/realtimeSync'
 
 const NAV_ITEMS = [
   { href: '/dashboard/doctor', label: 'Dashboard', icon: LayoutDashboard },
@@ -226,8 +227,7 @@ function PrescriptionUploadFlow({ doctorId }: { doctorId: string }) {
 
         const existing = JSON.parse(localStorage.getItem('sehat_uploaded_prescriptions') || '[]')
         localStorage.setItem('sehat_uploaded_prescriptions', JSON.stringify([localRx, ...existing]))
-        window.dispatchEvent(new Event('storage'))
-        window.dispatchEvent(new Event('sehat-rx-updated'))
+        triggerGlobalSync({ type: 'prescription_uploaded', rxId: newRxId })
       } catch (lErr) {
         console.warn('Local storage sync event error:', lErr)
       }

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate, cn } from '@/lib/utils'
+import { subscribeGlobalSync } from '@/lib/realtimeSync'
 
 const NAV_ITEMS = [
   { href: '/dashboard/patient', label: 'My Health Card', icon: LayoutDashboard },
@@ -47,7 +48,6 @@ export default function PatientPrescriptionsPage() {
 
   useEffect(() => {
     async function loadPrescriptions() {
-      setLoading(true)
       const supabase = createClient()
       const patientIds = [
         auth.patient?.id,
@@ -136,13 +136,11 @@ export default function PatientPrescriptionsPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pharmacy_dispensing' }, () => loadPrescriptions())
       .subscribe()
 
-    window.addEventListener('storage', loadPrescriptions)
-    window.addEventListener('sehat-rx-updated', loadPrescriptions)
+    const unsubscribeGlobal = subscribeGlobalSync(loadPrescriptions)
 
     return () => {
       supabase.removeChannel(channel)
-      window.removeEventListener('storage', loadPrescriptions)
-      window.removeEventListener('sehat-rx-updated', loadPrescriptions)
+      unsubscribeGlobal()
     }
   }, [auth.patient?.id])
 
