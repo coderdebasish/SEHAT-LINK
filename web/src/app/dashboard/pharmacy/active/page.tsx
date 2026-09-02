@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react'
 import { useRequireAuth } from '@/hooks/useAuth'
 import { Sidebar, Topbar } from '@/components/layout/DashboardLayout'
 import {
-  LayoutDashboard, Search, FileText, History, Settings, Loader2, Package
+  LayoutDashboard, Search, FileText, History, Settings, Loader2, Package, Eye
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
+import { subscribeGlobalSync } from '@/lib/realtimeSync'
 
 const NAV_ITEMS = [
   { href: '/dashboard/pharmacy', label: 'Dashboard', icon: LayoutDashboard },
@@ -24,7 +25,7 @@ type ActiveRxRow = {
   notes: string | null
   patient: { full_name: string; sehat_id: string } | null
   doctor: { full_name: string } | null
-  prescription_items: Array<{ id: string }> | null
+  prescription_items: Array<{ id: string; medicine_name: string }> | null
 }
 
 export default function PharmacyActivePage() {
@@ -33,8 +34,6 @@ export default function PharmacyActivePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!auth.profile?.id) return
-
     async function loadActive() {
       setLoading(true)
       const supabase = createClient()
@@ -44,12 +43,26 @@ export default function PharmacyActivePage() {
           id, status, created_at, notes,
           patient:patients!prescriptions_patient_id_fkey(full_name, sehat_id),
           doctor:profiles!prescriptions_doctor_id_fkey(full_name),
-          prescription_items(id)
+          prescription_items(id, medicine_name)
         `)
         .in('status', ['issued', 'pending', 'active'])
         .order('created_at', { ascending: false })
 
-      setActivePrescriptions((data as any) || [])
+      let list: ActiveRxRow[] = (data as any) || []
+
+      try {
+        const localUploaded: ActiveRxRow[] = JSON.parse(localStorage.getItem('sehat_uploaded_prescriptions') || '[]')
+        if (localUploaded.length > 0) {
+          const ids = new Set(list.map(r => r.id))
+          for (const item of localUploaded) {
+            if (!ids.has(item.id)) list.unshift(item)
+          }
+        }
+      } catch (e) {
+        console.warn('Local storage error:', e)
+      }
+
+      setActivePrescriptions(list)
       setLoading(false)
     }
 
@@ -60,8 +73,13 @@ export default function PharmacyActivePage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'prescriptions' }, () => loadActive())
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
-  }, [auth.profile?.id])
+    const unsubscribeGlobal = subscribeGlobalSync(loadActive)
+
+    return () => {
+      supabase.removeChannel(channel)
+      unsubscribeGlobal()
+    }
+  }, [])
 
   if (auth.loading) return <div className="page-loader"><div className="spinner" /></div>
   if (!auth.profile) return null
@@ -95,6 +113,7 @@ export default function PharmacyActivePage() {
                   const sehatId = Array.isArray(a.patient) ? a.patient[0]?.sehat_id : a.patient?.sehat_id
                   const doctorName = Array.isArray(a.doctor) ? a.doctor[0]?.full_name : a.doctor?.full_name
                   const itemsCount = a.prescription_items?.length || 1
+                  const isScanned = a.prescription_items?.some(i => i.medicine_name?.includes('.pdf') || i.medicine_name?.includes('Scanned Rx'))
 
                   return (
                     <div key={a.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-amber-200 transition-colors">
@@ -102,12 +121,13 @@ export default function PharmacyActivePage() {
                         <div className="flex items-center gap-2">
                           <h4 className="font-bold text-gray-900">{patientName || 'Priya Ramesh Patil'}</h4>
                           <span className="font-mono text-xs text-blue-700 font-bold">{sehatId || 'SL-MH-2026-000001'}</span>
+                          {isScanned && <span className="badge bg-violet-100 text-violet-800 font-bold text-[10px]">SCANNED PDF</span>}
                         </div>
-                        <p className="text-xs text-gray-500 font-mono mt-0.5">Rx #{a.id.slice(0, 8).toUpperCase()} · Issued by {doctorName || 'Dr. Rajesh Sharma'} on {formatDate(a.created_at)}</p>
-                        <p className="text-xs font-medium text-amber-700 mt-1">{itemsCount} prescribed medicines</p>
+                        <p className="text-xs text-gray-500 font-mono mt-0.5">Rx #{a.id.slice(0, 10).toUpperCase()} · Issued by {doctorName || 'Dr. Rajesh Sharma'} on {formatDate(a.created_at)}</p>
+                        <p className="text-xs font-medium text-amber-700 mt-1">{itemsCount} prescribed items</p>
                       </div>
-                      <a href={`/dashboard/pharmacy/verify?sehat_id=${sehatId || 'SL-MH-2026-000001'}`} className="btn btn-primary btn-sm">
-                        Dispense Prescription
+                      <a href={`/dashboard/pharmacy/verify?sehat_id=${sehatId || 'SL-MH-2026-000001'}`} className="btn btn-primary btn-sm flex items-center gap-1">
+                        <Eye className="w-4 h-4" /> View &amp; Dispense
                       </a>
                     </div>
                   )
