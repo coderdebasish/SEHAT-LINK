@@ -9,6 +9,7 @@
     "packages/*"
   ],
   "scripts": {
+    "build": "npm run build --workspace=web",
     "web": "npm run dev --workspace=web",
     "mobile": "npm run start --workspace=mobile",
     "typecheck": "npm run typecheck --workspace=web"
