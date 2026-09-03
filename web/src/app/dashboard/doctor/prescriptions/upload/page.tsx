@@ -203,8 +203,21 @@ function PrescriptionUploadFlow({ doctorId }: { doctorId: string }) {
         })
       }
 
+      let fileDataUrl = ''
+      try {
+        fileDataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string || '')
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(file)
+        })
+      } catch (fErr) {
+        console.warn('FileReader error:', fErr)
+      }
+
       // Store in localStorage & dispatch event for real-time cross-tab sync
       try {
+        const targetUrl = publicUrl || fileDataUrl
         const localRx = {
           id: newRxId,
           patient_id: patient.id,
@@ -212,6 +225,9 @@ function PrescriptionUploadFlow({ doctorId }: { doctorId: string }) {
           created_at: new Date().toISOString(),
           notes: notes || 'Scanned Doctor Prescription Document',
           doctor: { full_name: 'Dr. Rajesh Sharma' },
+          file_url: targetUrl,
+          file_name: file.name,
+          file_type: file.type,
           prescription_items: [
             {
               id: `item-${Date.now()}`,
@@ -219,7 +235,9 @@ function PrescriptionUploadFlow({ doctorId }: { doctorId: string }) {
               dosage: 'As prescribed',
               frequency: 'As directed by physician',
               duration: '7 Days',
-              instructions: notes || 'Follow doctor advice on uploaded document'
+              instructions: notes || 'Follow doctor advice on uploaded document',
+              file_url: targetUrl,
+              file_name: file.name
             }
           ],
           pharmacy_dispensing: null

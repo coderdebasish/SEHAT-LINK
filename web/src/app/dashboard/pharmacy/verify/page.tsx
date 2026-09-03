@@ -28,6 +28,8 @@ type PrescriptionItem = {
   duration: string | null
   instructions: string | null
   quantity: number | null
+  file_url?: string | null
+  file_name?: string | null
 }
 
 type PrescriptionRow = {
@@ -285,12 +287,22 @@ export default function PharmacyVerifyPage() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
+                              {(rx.file_url || scannedItem.file_url) && (
+                                <a
+                                  href={(rx.file_url || scannedItem.file_url) as string}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn btn-sm btn-outline text-xs flex items-center gap-1 font-semibold"
+                                >
+                                  Open Raw File ↗
+                                </a>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => setSelectedPdfRx(rx)}
                                 className="btn btn-sm bg-violet-700 hover:bg-violet-800 text-white font-bold flex items-center gap-1.5 shadow-sm"
                               >
-                                <Eye className="w-4 h-4" /> View / Print PDF Document
+                                <Eye className="w-4 h-4" /> View PDF Document
                               </button>
                             </div>
                           </div>
@@ -421,21 +433,52 @@ export default function PharmacyVerifyPage() {
                       </div>
                     </div>
 
-                    {/* Scanned Document Render Container */}
-                    <div className="border-2 border-dashed border-violet-200 rounded-xl p-4 bg-violet-50/30 text-center space-y-3">
-                      <div className="w-16 h-16 bg-violet-100 rounded-full flex items-center justify-center mx-auto text-violet-700">
-                        <FileText className="w-8 h-8" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-gray-900">Scanned Prescription Document Image/PDF</p>
-                        <p className="text-xs text-gray-500 mt-0.5">High Resolution Scan Uploaded by Doctor</p>
-                      </div>
-                      <div className="p-3 bg-white rounded-lg border border-gray-200 text-left font-mono text-xs space-y-1 text-gray-700">
-                        <p>📄 <strong>File Name:</strong> {selectedPdfRx.prescription_items[0]?.medicine_name?.replace('Scanned Rx: ', '') || 'INV-455736.pdf'}</p>
-                        <p>🔒 <strong>Integrity Hash:</strong> SHA256-SEHAT-VERIFIED-DOCUMENT</p>
-                        <p>📝 <strong>Prescribing Doctor Notes:</strong> {selectedPdfRx.notes || selectedPdfRx.prescription_items[0]?.instructions || 'Take medications as instructed.'}</p>
-                      </div>
-                    </div>
+                    {/* 100% REAL PDF / Image Document Viewer Container */}
+                    {(() => {
+                      const targetPdfUrl = selectedPdfRx.file_url || selectedPdfRx.prescription_items[0]?.file_url
+                      const fileName = selectedPdfRx.file_name || selectedPdfRx.prescription_items[0]?.medicine_name?.replace('Scanned Rx: ', '') || 'Uploaded-Prescription.pdf'
+
+                      if (targetPdfUrl) {
+                        return (
+                          <div className="w-full space-y-2">
+                            <div className="bg-slate-900 rounded-xl overflow-hidden shadow-md border border-slate-700">
+                              <div className="bg-slate-800 text-slate-200 text-xs px-4 py-2.5 flex items-center justify-between font-mono border-b border-slate-700">
+                                <span className="font-bold truncate text-violet-300">📄 {fileName}</span>
+                                <a
+                                  href={targetPdfUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn btn-xs bg-violet-600 hover:bg-violet-700 text-white font-bold flex items-center gap-1 py-1 px-2.5 rounded"
+                                >
+                                  Open Actual File in New Tab ↗
+                                </a>
+                              </div>
+                              <iframe
+                                src={targetPdfUrl}
+                                className="w-full h-[550px] border-0 bg-white"
+                                title="Uploaded Prescription File"
+                              />
+                            </div>
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <div className="border-2 border-dashed border-violet-200 rounded-xl p-6 bg-violet-50/40 text-center space-y-3">
+                          <div className="w-14 h-14 bg-violet-100 rounded-full flex items-center justify-center mx-auto text-violet-700">
+                            <FileText className="w-7 h-7" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-900 text-sm">Scanned Doctor Prescription Document</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{fileName}</p>
+                          </div>
+                          <div className="p-3 bg-white rounded-lg border border-gray-200 text-left font-mono text-xs space-y-1 text-gray-700">
+                            <p>📄 <strong>File Name:</strong> {fileName}</p>
+                            <p>📝 <strong>Doctor Notes:</strong> {selectedPdfRx.notes || selectedPdfRx.prescription_items[0]?.instructions || 'Take medications as instructed.'}</p>
+                          </div>
+                        </div>
+                      )
+                    })()}
 
                     {/* Prescribed Items Table */}
                     <div className="space-y-2">
