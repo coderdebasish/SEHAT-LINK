@@ -236,9 +236,22 @@ export default function PharmacyVerifyPage() {
     try {
       const localUploaded: PrescriptionRow[] = JSON.parse(localStorage.getItem('sehat_uploaded_prescriptions') || '[]')
       if (localUploaded.length > 0) {
-        const existingIds = new Set(rxList.map(r => r.id))
+        const localMap = new Map(localUploaded.map(u => [u.id, u]))
+        rxList = rxList.map(r => {
+          const local = localMap.get(r.id)
+          if (local && local.file_url) {
+            return {
+              ...r,
+              file_url: local.file_url,
+              file_name: local.file_name || r.file_name,
+              prescription_items: r.prescription_items?.map(i => ({ ...i, file_url: local.file_url }))
+            }
+          }
+          return r
+        })
+
         for (const item of localUploaded) {
-          if (!existingIds.has(item.id)) {
+          if (!rxList.some(r => r.id === item.id)) {
             rxList.unshift(item)
           }
         }
@@ -412,12 +425,20 @@ export default function PharmacyVerifyPage() {
                           </div>
                         </div>
 
-                        <div className="w-full h-[520px] bg-white border-2 border-t-0 border-violet-200 rounded-b-xl overflow-hidden shadow-inner">
-                          <iframe
-                            src={targetDocUrl}
-                            className="w-full h-full border-0 bg-white"
-                            title={`Prescription Document - ${fileName}`}
-                          />
+                        <div className="w-full h-[520px] bg-slate-900 border-2 border-t-0 border-violet-200 rounded-b-xl overflow-hidden shadow-inner flex items-center justify-center">
+                          {targetDocUrl.startsWith('data:image/') || targetDocUrl.match(/\.(png|jpg|jpeg|webp)$/i) ? (
+                            <img
+                              src={targetDocUrl}
+                              alt={fileName}
+                              className="max-w-full max-h-full object-contain p-2"
+                            />
+                          ) : (
+                            <iframe
+                              src={targetDocUrl}
+                              className="w-full h-full border-0 bg-white"
+                              title={`Prescription Document - ${fileName}`}
+                            />
+                          )}
                         </div>
                       </div>
 
@@ -527,12 +548,20 @@ export default function PharmacyVerifyPage() {
                     )
 
                     return (
-                      <div className="w-full h-[650px] bg-white rounded-xl overflow-hidden shadow-xl border border-gray-700">
-                        <iframe
-                          src={targetDocUrl}
-                          className="w-full h-full border-0 bg-white"
-                          title="Fullscreen Prescription Document"
-                        />
+                      <div className="w-full h-[650px] bg-slate-950 rounded-xl overflow-hidden shadow-xl border border-gray-700 flex items-center justify-center">
+                        {targetDocUrl.startsWith('data:image/') || targetDocUrl.match(/\.(png|jpg|jpeg|webp)$/i) ? (
+                          <img
+                            src={targetDocUrl}
+                            alt={fileName}
+                            className="max-w-full max-h-full object-contain p-2"
+                          />
+                        ) : (
+                          <iframe
+                            src={targetDocUrl}
+                            className="w-full h-full border-0 bg-white"
+                            title="Fullscreen Prescription Document"
+                          />
+                        )}
                       </div>
                     )
                   })()}

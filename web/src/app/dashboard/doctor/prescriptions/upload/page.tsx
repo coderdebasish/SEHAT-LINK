@@ -217,7 +217,7 @@ function PrescriptionUploadFlow({ doctorId }: { doctorId: string }) {
 
       // Store in localStorage & dispatch event for real-time cross-tab sync
       try {
-        const targetUrl = publicUrl || fileDataUrl
+        const targetUrl = fileDataUrl || publicUrl
         const localRx = {
           id: newRxId,
           patient_id: patient.id,
