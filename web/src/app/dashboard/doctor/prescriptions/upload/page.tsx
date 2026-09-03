@@ -253,6 +253,7 @@ function PrescriptionUploadFlow({ doctorId }: { doctorId: string }) {
         if (file.name) {
           localStorage.setItem(`sehat_file_${file.name}`, targetUrl)
         }
+        localStorage.setItem('sehat_file_latest', targetUrl)
         triggerGlobalSync({ type: 'prescription_uploaded', rxId: newRxId })
       } catch (lErr) {
         console.warn('Local storage sync event error:', lErr)

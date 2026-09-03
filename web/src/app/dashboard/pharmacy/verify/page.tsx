@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Search, FileText, CheckCircle,
   History, Settings, Loader2, CheckCircle2, AlertTriangle, Package,
-  Eye, X, Printer, FileCheck, ExternalLink
+  Eye, X, Printer, FileCheck, ExternalLink, Upload
 } from 'lucide-react'
 import { getAge } from '@/lib/utils'
 import { subscribeGlobalSync } from '@/lib/realtimeSync'
@@ -81,9 +81,13 @@ function getPrescriptionFileUrl(rx: PrescriptionRow): string | null {
   }
 
   const fileName = rx.file_name || rx.prescription_items?.[0]?.medicine_name?.replace('Scanned Rx: ', '')
-  if (fileName && typeof window !== 'undefined') {
-    const localFile = localStorage.getItem(`sehat_file_${fileName}`)
-    if (localFile) return localFile
+  if (typeof window !== 'undefined') {
+    if (fileName) {
+      const localFile = localStorage.getItem(`sehat_file_${fileName}`)
+      if (localFile) return localFile
+    }
+    const latestFile = localStorage.getItem('sehat_file_latest')
+    if (latestFile) return latestFile
   }
 
   return null
@@ -197,6 +201,50 @@ export default function PharmacyVerifyPage() {
 
     setResult({ ...patientData, prescriptions: rxList })
     setSearching(false)
+  }
+
+  async function handleAttachFileToRx(e: React.ChangeEvent<HTMLInputElement>, rxId: string, fileName: string) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result as string || '')
+        reader.onerror = () => resolve('')
+        reader.readAsDataURL(file)
+      })
+
+      if (!dataUrl) return
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`sehat_file_${fileName}`, dataUrl)
+        if (file.name) {
+          localStorage.setItem(`sehat_file_${file.name}`, dataUrl)
+        }
+        localStorage.setItem('sehat_file_latest', dataUrl)
+
+        const localUploaded = JSON.parse(localStorage.getItem('sehat_uploaded_prescriptions') || '[]')
+        const updatedLocal = localUploaded.map((u: any) => u.id === rxId ? { ...u, file_url: dataUrl, file_name: file.name } : u)
+        localStorage.setItem('sehat_uploaded_prescriptions', JSON.stringify(updatedLocal))
+      }
+
+      setResult(prev => {
+        if (!prev) return null
+        return {
+          ...prev,
+          prescriptions: prev.prescriptions.map(r => r.id === rxId ? { ...r, file_url: dataUrl, file_name: file.name } : r)
+        }
+      })
+
+      const supabase = createClient()
+      await supabase
+        .from('prescription_items')
+        .update({ instructions: `[FILE_URL:${dataUrl}]` })
+        .eq('prescription_id', rxId)
+    } catch (err) {
+      console.warn('File attach error:', err)
+    }
   }
 
   async function handleDispense(prescriptionId: string) {
@@ -372,10 +420,19 @@ export default function PharmacyVerifyPage() {
                             )}
                           </div>
                         ) : (
-                          <div className="border-2 border-dashed border-amber-300 rounded-b-xl p-8 bg-amber-50/50 text-center space-y-2">
+                          <div className="border-2 border-dashed border-amber-300 rounded-b-xl p-8 bg-amber-50/50 text-center space-y-3">
                             <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
                             <p className="font-bold text-amber-900 text-sm">No raw uploaded document stream found for this item</p>
-                            <p className="text-xs text-amber-700">Please ask the prescribing doctor to upload the scanned prescription document via the Doctor Portal.</p>
+                            <p className="text-xs text-amber-700">This record was saved without an attached binary stream. Select the file below to attach and view it immediately:</p>
+                            <label className="btn btn-sm bg-violet-700 hover:bg-violet-800 text-white font-bold inline-flex items-center gap-2 cursor-pointer shadow-md rounded-lg py-2 px-4">
+                              <Upload className="w-4 h-4" /> Select &amp; Attach File ({fileName})
+                              <input
+                                type="file"
+                                accept=".pdf,.png,.jpg,.jpeg,.webp"
+                                className="hidden"
+                                onChange={e => handleAttachFileToRx(e, rx.id, fileName)}
+                              />
+                            </label>
                           </div>
                         )}
                       </div>
@@ -476,10 +533,19 @@ export default function PharmacyVerifyPage() {
 
                     if (!targetDocUrl) {
                       return (
-                        <div className="text-center p-12 text-slate-400 space-y-2">
+                        <div className="text-center p-12 text-slate-400 space-y-4">
                           <AlertTriangle className="w-10 h-10 text-amber-400 mx-auto" />
                           <p className="font-bold text-white text-base">No file binary stream attached</p>
-                          <p className="text-xs">No raw uploaded document stream was found for this prescription item.</p>
+                          <p className="text-xs">Select the file below to attach and preview it in full screen:</p>
+                          <label className="btn btn-sm bg-violet-600 hover:bg-violet-700 text-white font-bold inline-flex items-center gap-2 cursor-pointer shadow-md py-2 px-4 rounded-lg">
+                            <Upload className="w-4 h-4" /> Select &amp; Attach File ({fileName})
+                            <input
+                              type="file"
+                              accept=".pdf,.png,.jpg,.jpeg,.webp"
+                              className="hidden"
+                              onChange={e => handleAttachFileToRx(e, selectedPdfRx.id, fileName)}
+                            />
+                          </label>
                         </div>
                       )
                     }
