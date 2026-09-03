@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRequireAuth } from '@/hooks/useAuth'
-import { Sidebar, Topbar } from '@/components/layout/DashboardLayout'
+import { DashboardShell } from '@/components/layout/DashboardLayout'
 import {
   LayoutDashboard, Users, Stethoscope, FileText, Upload,
   GitBranch, Settings, Search, Calendar, Plus, ArrowUpRight,

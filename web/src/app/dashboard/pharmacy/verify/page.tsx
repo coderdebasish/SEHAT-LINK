@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRequireAuth } from '@/hooks/useAuth'
-import { Sidebar, Topbar } from '@/components/layout/DashboardLayout'
+import { DashboardShell } from '@/components/layout/DashboardLayout'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Search, FileText, CheckCircle,

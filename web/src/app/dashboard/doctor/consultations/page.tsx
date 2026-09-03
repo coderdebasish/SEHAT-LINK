@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRequireAuth } from '@/hooks/useAuth'
-import { Sidebar, Topbar } from '@/components/layout/DashboardLayout'
+import { DashboardShell } from '@/components/layout/DashboardLayout'
 import {
   LayoutDashboard, Search, Upload, FileText, Share2, Settings, Plus, Loader2, Package, X, CheckCircle
 } from 'lucide-react'

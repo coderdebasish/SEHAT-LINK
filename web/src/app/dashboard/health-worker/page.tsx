@@ -1,7 +1,7 @@
 'use client'
 
 import { useRequireAuth } from '@/hooks/useAuth'
-import { Sidebar, Topbar } from '@/components/layout/DashboardLayout'
+import { DashboardShell } from '@/components/layout/DashboardLayout'
 import {
   LayoutDashboard, Users, UserPlus, Activity, ClipboardList,
   GitBranch, AlertTriangle, RefreshCw, Settings, MapPin, Search
