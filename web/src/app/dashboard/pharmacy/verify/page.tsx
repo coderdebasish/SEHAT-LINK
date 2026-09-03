@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Search, FileText, CheckCircle,
   History, Settings, Loader2, CheckCircle2, AlertTriangle, Package,
-  Eye, X, Printer, FileCheck, ExternalLink, Upload
+  Eye, X, Printer, FileCheck, ExternalLink, Upload, Trash2
 } from 'lucide-react'
 import { getAge } from '@/lib/utils'
 import { subscribeGlobalSync } from '@/lib/realtimeSync'
@@ -275,16 +275,47 @@ export default function PharmacyVerifyPage() {
     setDispensingId(null)
   }
 
+  function handleClearUploadHistory() {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('sehat_uploaded_prescriptions')
+      localStorage.removeItem('sehat_file_latest')
+      const keysToRemove: string[] = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && key.startsWith('sehat_file_')) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k))
+    }
+    if (sehatId) {
+      handleLookup(undefined, sehatId)
+    }
+  }
+
   return (
-    <div className="dashboard-layout">
-      <Sidebar profile={profile} navItems={NAV_ITEMS} onSignOut={signOut} />
-      <div className="dashboard-main">
-        <Topbar title="Verify Prescription" subtitle="SEHAT ID Lookup & Dispensing" profile={profile} onSignOut={signOut} />
-        <main className="dashboard-content max-w-3xl mx-auto space-y-6">
+    <DashboardShell
+      profile={profile}
+      navItems={NAV_ITEMS}
+      onSignOut={signOut}
+      title="Verify Prescription"
+      subtitle="SEHAT ID Lookup & Dispensing"
+    >
+      <div className="max-w-3xl mx-auto space-y-6">
 
           {/* Search */}
           <div className="card space-y-4">
-            <h2 className="font-bold text-gray-900 text-lg">Patient SEHAT Health ID Lookup</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-gray-900 text-lg">Patient SEHAT Health ID Lookup</h2>
+              <button
+                type="button"
+                onClick={handleClearUploadHistory}
+                className="btn btn-xs bg-red-50 hover:bg-red-100 text-red-700 font-bold border border-red-200 flex items-center gap-1.5 py-1 px-2.5 rounded-lg shadow-sm"
+                title="Clear all test upload history and local cached files"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-red-600" /> Clear Test Upload History
+              </button>
+            </div>
             <p className="text-xs text-gray-500">Patient presents their SEHAT Health ID card — enter or scan the ID below to retrieve active prescriptions</p>
             <form onSubmit={e => handleLookup(e)} className="flex gap-3">
               <input
@@ -593,9 +624,7 @@ export default function PharmacyVerifyPage() {
               </div>
             </div>
           )}
-
-        </main>
-      </div>
-    </div>
+        </div>
+    </DashboardShell>
   )
 }

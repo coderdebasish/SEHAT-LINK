@@ -51,20 +51,15 @@ export default function PatientDashboard() {
   if (!auth.profile) return null
 
   return (
-    <div className="dashboard-layout">
-      <Sidebar profile={auth.profile} navItems={NAV_ITEMS} onSignOut={auth.signOut} />
-      <div className="dashboard-main">
-        <Topbar
-          title="My Health Overview"
-          subtitle={`Welcome back, ${auth.profile.full_name.split(' ')[0]}`}
-          profile={auth.profile}
-          onSignOut={auth.signOut}
-        />
-        <main className="dashboard-content">
-          <PatientOverview auth={auth} />
-        </main>
-      </div>
-    </div>
+    <DashboardShell
+      profile={auth.profile}
+      navItems={NAV_ITEMS}
+      onSignOut={auth.signOut}
+      title="My Health Overview"
+      subtitle={`Welcome back, ${auth.profile.full_name.split(' ')[0]}`}
+    >
+      <PatientOverview auth={auth} />
+    </DashboardShell>
   )
 }
 

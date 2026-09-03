@@ -44,25 +44,20 @@ export default function DoctorDashboard() {
   if (!auth.profile) return null
 
   return (
-    <div className="dashboard-layout">
-      <Sidebar profile={auth.profile} navItems={NAV_ITEMS} onSignOut={auth.signOut} />
-      <div className="dashboard-main">
-        <Topbar
-          title="Doctor Dashboard"
-          subtitle={`Clinician Portal — ${auth.profile.full_name}`}
-          profile={auth.profile}
-          onSignOut={auth.signOut}
-          actions={
-            <Link href="/dashboard/doctor/patients" className="btn btn-primary btn-sm">
-              <Search className="w-4 h-4" /> Find Patient
-            </Link>
-          }
-        />
-        <main className="dashboard-content">
-          <DoctorOverview auth={auth} />
-        </main>
-      </div>
-    </div>
+    <DashboardShell
+      profile={auth.profile}
+      navItems={NAV_ITEMS}
+      onSignOut={auth.signOut}
+      title="Doctor Dashboard"
+      subtitle={`Clinician Portal — ${auth.profile.full_name}`}
+      actions={
+        <Link href="/dashboard/doctor/patients" className="btn btn-primary btn-sm">
+          <Search className="w-4 h-4" /> Find Patient
+        </Link>
+      }
+    >
+      <DoctorOverview auth={auth} />
+    </DashboardShell>
   )
 }
 

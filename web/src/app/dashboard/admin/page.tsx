@@ -27,15 +27,15 @@ export default function AdminDashboard() {
   if (!profile) return null
 
   return (
-    <div className="dashboard-layout">
-      <Sidebar profile={profile} navItems={NAV_ITEMS} onSignOut={signOut} />
-      <div className="dashboard-main">
-        <Topbar title="Admin Dashboard" subtitle="System Administrator" profile={profile} onSignOut={signOut} />
-        <main className="dashboard-content">
-          <AdminOverview />
-        </main>
-      </div>
-    </div>
+    <DashboardShell
+      profile={profile}
+      navItems={NAV_ITEMS}
+      onSignOut={signOut}
+      title="Admin Dashboard"
+      subtitle="System Administrator"
+    >
+      <AdminOverview />
+    </DashboardShell>
   )
 }
 

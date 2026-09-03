@@ -1,15 +1,20 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
 import {
   Heart, Shield, Users, Stethoscope, Pill, ClipboardList,
   ArrowRight, CheckCircle, MapPin, Phone, ChevronRight,
-  Activity, FileText, Bell, Search
+  Activity, FileText, Bell, Search, Menu, X
 } from 'lucide-react'
 
 export default function LandingPage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
     <div className="min-h-screen bg-white">
       {/* ── NAVIGATION ── */}
-      <nav className="public-nav">
+      <nav className="public-nav relative">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-blue-700">
             <Heart className="w-5 h-5 text-white fill-white" />
@@ -39,11 +44,41 @@ export default function LandingPage() {
           ))}
         </div>
 
-        <div className="flex items-center gap-3">
-          <Link href="/login" className="btn btn-primary">
+        <div className="flex items-center gap-2">
+          <Link href="/login" className="btn btn-primary text-xs sm:text-sm font-bold py-2 px-3 sm:px-4">
             Login <ArrowRight className="w-4 h-4" />
           </Link>
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+            aria-label="Toggle Menu"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
+
+        {/* Mobile Dropdown Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-xl p-4 space-y-2 z-50 animate-fadeIn">
+            {[
+              { href: '/about', label: 'About SEHAT-LINK' },
+              { href: '/services', label: 'Platform Services' },
+              { href: '/find-facilities', label: 'Find Facilities' },
+              { href: '/find-doctors', label: 'Find Doctors' },
+              { href: '/health-info', label: 'Health Info' },
+              { href: '/schemes', label: 'Government Schemes' },
+            ].map(item => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-2.5 rounded-lg text-sm font-semibold text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        )}
       </nav>
 
       {/* ── HERO ── */}

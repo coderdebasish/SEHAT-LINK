@@ -27,25 +27,20 @@ export default function HealthWorkerDashboard() {
   if (!profile) return null
 
   return (
-    <div className="dashboard-layout">
-      <Sidebar profile={profile} navItems={NAV_ITEMS} onSignOut={signOut} />
-      <div className="dashboard-main">
-        <Topbar
-          title="Health Worker Dashboard"
-          subtitle="Field & Community"
-          profile={profile}
-          onSignOut={signOut}
-          actions={
-            <Link href="/dashboard/health-worker/register" className="btn btn-primary btn-sm">
-              <UserPlus className="w-4 h-4" /> Register Patient
-            </Link>
-          }
-        />
-        <main className="dashboard-content">
-          <HealthWorkerOverview />
-        </main>
-      </div>
-    </div>
+    <DashboardShell
+      profile={profile}
+      navItems={NAV_ITEMS}
+      onSignOut={signOut}
+      title="Health Worker Dashboard"
+      subtitle="Field & Community"
+      actions={
+        <Link href="/dashboard/health-worker/register" className="btn btn-primary btn-sm">
+          <UserPlus className="w-4 h-4" /> Register Patient
+        </Link>
+      }
+    >
+      <HealthWorkerOverview />
+    </DashboardShell>
   )
 }
 

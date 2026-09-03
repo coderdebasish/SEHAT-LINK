@@ -128,47 +128,48 @@ export default function LoginPage() {
       </div>
 
       {/* ── RIGHT PANEL: LOGIN FORM ── */}
-      <div className="flex-1 flex flex-col justify-center px-6 py-12 bg-white">
-        <div className="w-full max-w-[400px] mx-auto">
-          {/* Back link */}
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-8 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back to home
-          </Link>
+      <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 py-6 sm:py-12 bg-white min-h-screen">
+        <div className="w-full max-w-[440px] mx-auto space-y-6">
+          {/* Back link & Mobile Logo header */}
+          <div className="flex items-center justify-between">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" /> Back to home
+            </Link>
 
-          {/* Mobile logo */}
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center">
-              <Heart className="w-4 h-4 text-white fill-white" />
+            <div className="flex items-center gap-2 lg:hidden">
+              <div className="w-7 h-7 bg-blue-700 rounded-lg flex items-center justify-center">
+                <Heart className="w-4 h-4 text-white fill-white" />
+              </div>
+              <span className="font-bold text-gray-900 text-sm">SEHAT-LINK</span>
             </div>
-            <span className="font-bold text-gray-900">SEHAT-LINK</span>
           </div>
 
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">Welcome back</h1>
-            <p className="text-gray-500 text-sm">Sign in to access your healthcare dashboard</p>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">Welcome back</h1>
+            <p className="text-gray-500 text-xs sm:text-sm">Sign in to access your healthcare dashboard</p>
           </div>
 
           {/* Error alert */}
           {error && (
-            <div className="alert alert-error mb-6">
+            <div className="alert alert-error">
               <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-4">
             {/* Email */}
             <div className="form-group">
-              <label htmlFor="email" className="label">Email address</label>
+              <label htmlFor="email" className="label text-xs sm:text-sm font-bold">Email address</label>
               <input
                 id="email"
                 type="email"
                 autoComplete="email"
                 required
-                className="input"
+                className="input text-base sm:text-sm min-h-[44px]"
                 placeholder="you@example.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -178,9 +179,9 @@ export default function LoginPage() {
 
             {/* Password */}
             <div className="form-group">
-              <div className="flex items-center justify-between mb-1.5">
-                <label htmlFor="password" className="label" style={{ marginBottom: 0 }}>Password</label>
-                <Link href="/forgot-password" className="text-xs text-blue-700 hover:underline">
+              <div className="flex items-center justify-between mb-1">
+                <label htmlFor="password" className="label text-xs sm:text-sm font-bold" style={{ marginBottom: 0 }}>Password</label>
+                <Link href="/forgot-password" className="text-xs font-semibold text-blue-700 hover:underline">
                   Forgot password?
                 </Link>
               </div>
@@ -190,8 +191,8 @@ export default function LoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   required
-                  className="input pr-10"
-                  placeholder="Enter your password"
+                  className="input pr-10 text-base sm:text-sm min-h-[44px]"
+                  placeholder="Enter password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   disabled={loading}
@@ -199,7 +200,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600"
                   tabIndex={-1}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
@@ -212,7 +213,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || !email || !password}
-              className="btn btn-primary btn-lg w-full mt-2"
+              className="btn btn-primary btn-lg w-full min-h-[48px] font-bold text-sm sm:text-base mt-2 shadow-md"
             >
               {loading ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Signing in…</>
@@ -222,40 +223,34 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Info note */}
-          <div className="mt-6 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-            <p className="text-xs text-blue-700 leading-relaxed">
-              Your dashboard loads automatically based on your assigned role.
-            </p>
-          </div>
-
           {/* Demo credentials — click to fill */}
-          <div className="mt-4 p-4 bg-amber-50 border border-amber-100 rounded-lg">
-            <p className="text-xs text-amber-700 font-semibold mb-2.5">
-              🎯 Demo — Click a role to auto-fill login
+          <div className="p-3.5 sm:p-4 bg-amber-50/90 border border-amber-200 rounded-xl space-y-2">
+            <p className="text-xs text-amber-900 font-bold flex items-center justify-between">
+              <span>🎯 Quick Demo Login Presets</span>
+              <span className="text-[10px] font-normal text-amber-700">Tap to auto-fill</span>
             </p>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { role: 'Patient',       email: 'patient@sehat.in',     color: 'bg-sky-100 text-sky-800 hover:bg-sky-200 border-sky-200' },
-                { role: 'Doctor',        email: 'doctor@sehat.in',      color: 'bg-violet-100 text-violet-800 hover:bg-violet-200 border-violet-200' },
-                { role: 'Health Worker', email: 'healthworker@sehat.in',color: 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-200' },
-                { role: 'Pharmacy',      email: 'pharmacy@sehat.in',    color: 'bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-200' },
-                { role: 'Facility',      email: 'facility@sehat.in',    color: 'bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-200' },
-                { role: 'Admin',         email: 'admin@sehat.in',       color: 'bg-rose-100 text-rose-800 hover:bg-rose-200 border-rose-200' },
+                { role: 'Patient',       email: 'patient@sehat.in',     color: 'bg-sky-100/80 text-sky-900 hover:bg-sky-200 border-sky-300' },
+                { role: 'Doctor',        email: 'doctor@sehat.in',      color: 'bg-violet-100/80 text-violet-900 hover:bg-violet-200 border-violet-300' },
+                { role: 'Health Worker', email: 'healthworker@sehat.in',color: 'bg-emerald-100/80 text-emerald-900 hover:bg-emerald-200 border-emerald-300' },
+                { role: 'Pharmacy',      email: 'pharmacy@sehat.in',    color: 'bg-amber-100/80 text-amber-900 hover:bg-amber-200 border-amber-300' },
+                { role: 'Facility',      email: 'facility@sehat.in',    color: 'bg-orange-100/80 text-orange-900 hover:bg-orange-200 border-orange-300' },
+                { role: 'Admin',         email: 'admin@sehat.in',       color: 'bg-rose-100/80 text-rose-900 hover:bg-rose-200 border-rose-300' },
               ].map(demo => (
                 <button
                   key={demo.role}
                   type="button"
                   onClick={() => { setEmail(demo.email); setPassword('Sehat123') }}
-                  className={`text-left px-3 py-2 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${demo.color}`}
+                  className={`text-left p-2.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer min-h-[44px] flex flex-col justify-center active:scale-95 ${demo.color}`}
                 >
-                  <div className="font-semibold">{demo.role}</div>
-                  <div className="opacity-60 text-[10px] mt-0.5 font-mono truncate">{demo.email}</div>
+                  <div className="font-bold leading-none">{demo.role}</div>
+                  <div className="opacity-75 text-[10px] mt-1 font-mono truncate">{demo.email}</div>
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-amber-600 mt-2 text-center">
-              Password for all: <span className="font-mono font-bold">Sehat123</span>
+            <p className="text-[11px] text-amber-800 text-center font-medium pt-1">
+              Password for all: <span className="font-mono font-bold text-amber-950">Sehat123</span>
             </p>
           </div>
         </div>

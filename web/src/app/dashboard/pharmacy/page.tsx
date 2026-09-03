@@ -23,15 +23,15 @@ export default function PharmacyDashboard() {
   if (!profile) return null
 
   return (
-    <div className="dashboard-layout">
-      <Sidebar profile={profile} navItems={NAV_ITEMS} onSignOut={signOut} />
-      <div className="dashboard-main">
-        <Topbar title="Pharmacy Dashboard" subtitle="Prescription Fulfilment" profile={profile} onSignOut={signOut} />
-        <main className="dashboard-content">
-          <PharmacyOverview />
-        </main>
-      </div>
-    </div>
+    <DashboardShell
+      profile={profile}
+      navItems={NAV_ITEMS}
+      onSignOut={signOut}
+      title="Pharmacy Dashboard"
+      subtitle="Prescription Fulfilment"
+    >
+      <PharmacyOverview />
+    </DashboardShell>
   )
 }
 
