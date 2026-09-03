@@ -148,6 +148,19 @@ function PrescriptionUploadFlow({ doctorId }: { doctorId: string }) {
       const fileExt = file.name.split('.').pop()
       const filePath = `prescriptions/${patient.id}/${Date.now()}.${fileExt}`
 
+      // First generate raw Base64 Data URL directly from uploaded file
+      let fileDataUrl = ''
+      try {
+        fileDataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string || '')
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(file)
+        })
+      } catch (fErr) {
+        console.warn('FileReader error:', fErr)
+      }
+
       let publicUrl = ''
       try {
         const { error: storageError } = await supabase.storage
@@ -164,7 +177,10 @@ function PrescriptionUploadFlow({ doctorId }: { doctorId: string }) {
         console.warn('Storage bucket upload notice:', stErr)
       }
 
-      // Create prescription in database
+      const targetUrl = fileDataUrl || publicUrl
+      const finalNotes = `${notes || 'Scanned Doctor Prescription Document'} [FILE_URL:${targetUrl}]`
+
+      // Create prescription in database with embedded file URL in notes
       const { data: rx, error: rxError } = await supabase
         .from('prescriptions')
         .insert({
@@ -172,14 +188,14 @@ function PrescriptionUploadFlow({ doctorId }: { doctorId: string }) {
           doctor_id: doctorId || 'd1000000-0000-0000-0000-000000000001',
           type: 'scanned',
           status: 'active',
-          notes: notes || 'Scanned Doctor Prescription Document',
+          notes: finalNotes,
         })
         .select('id')
         .single()
 
       const newRxId = rx?.id || `RX-${Date.now().toString().slice(-8)}`
 
-      // Insert item into prescription_items
+      // Insert item into prescription_items with embedded file URL
       await supabase.from('prescription_items').insert([
         {
           prescription_id: newRxId,
@@ -187,37 +203,26 @@ function PrescriptionUploadFlow({ doctorId }: { doctorId: string }) {
           dosage: 'As prescribed',
           frequency: 'As directed by physician',
           duration: '7 Days',
-          instructions: notes || 'Follow doctor advice on uploaded document',
+          instructions: `[FILE_URL:${targetUrl}]`,
           quantity: 1
         }
       ])
 
-      // If document URL exists, store in prescription_documents
-      if (publicUrl) {
+      // Always attempt to insert into prescription_documents if table exists
+      try {
         await supabase.from('prescription_documents').insert({
           prescription_id: newRxId,
-          file_url: publicUrl,
+          file_url: targetUrl,
           file_name: file.name,
           file_type: file.type,
           file_size_bytes: file.size,
         })
-      }
-
-      let fileDataUrl = ''
-      try {
-        fileDataUrl = await new Promise<string>((resolve) => {
-          const reader = new FileReader()
-          reader.onloadend = () => resolve(reader.result as string || '')
-          reader.onerror = () => resolve('')
-          reader.readAsDataURL(file)
-        })
-      } catch (fErr) {
-        console.warn('FileReader error:', fErr)
+      } catch (docErr) {
+        console.warn('Prescription document insert notice:', docErr)
       }
 
       // Store in localStorage & dispatch event for real-time cross-tab sync
       try {
-        const targetUrl = fileDataUrl || publicUrl
         const localRx = {
           id: newRxId,
           patient_id: patient.id,
@@ -245,6 +250,9 @@ function PrescriptionUploadFlow({ doctorId }: { doctorId: string }) {
 
         const existing = JSON.parse(localStorage.getItem('sehat_uploaded_prescriptions') || '[]')
         localStorage.setItem('sehat_uploaded_prescriptions', JSON.stringify([localRx, ...existing]))
+        if (file.name) {
+          localStorage.setItem(`sehat_file_${file.name}`, targetUrl)
+        }
         triggerGlobalSync({ type: 'prescription_uploaded', rxId: newRxId })
       } catch (lErr) {
         console.warn('Local storage sync event error:', lErr)

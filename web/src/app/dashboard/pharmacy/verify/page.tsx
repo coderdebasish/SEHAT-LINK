@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Search, FileText, CheckCircle,
   History, Settings, Loader2, CheckCircle2, AlertTriangle, Package,
-  Eye, Download, X, Printer, ShieldCheck, FileCheck, ExternalLink
+  Eye, X, Printer, FileCheck, ExternalLink
 } from 'lucide-react'
 import { getAge } from '@/lib/utils'
 import { subscribeGlobalSync } from '@/lib/realtimeSync'
@@ -32,6 +32,12 @@ type PrescriptionItem = {
   file_name?: string | null
 }
 
+type PrescriptionDocument = {
+  file_url: string
+  file_name: string | null
+  file_type: string | null
+}
+
 type PrescriptionRow = {
   id: string
   status: string
@@ -43,6 +49,7 @@ type PrescriptionRow = {
   file_name?: string | null
   doctor: { full_name: string } | null
   prescription_items: PrescriptionItem[]
+  prescription_documents?: PrescriptionDocument[]
   pharmacy_dispensing: Array<{ id: string; status: string; dispensed_at: string | null }> | null
 }
 
@@ -56,104 +63,30 @@ type PatientResult = {
   prescriptions: PrescriptionRow[]
 }
 
-function generatePrescriptionPdfDataUrl(
-  fileName: string,
-  doctorName: string,
-  patientName: string,
-  sehatId: string,
-  notes: string,
-  items: PrescriptionItem[],
-  dateStr: string
-) {
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>${fileName}</title>
-        <style>
-          * { box-sizing: border-box; }
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; margin: 0; padding: 20px; color: #0f172a; }
-          .doc-card { background: #ffffff; border: 2px solid #cbd5e1; border-radius: 12px; padding: 28px; max-width: 720px; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-          .header { display: flex; justify-content: space-between; border-b: 2px solid #4f46e5; padding-bottom: 16px; margin-bottom: 20px; }
-          .title { color: #312e81; font-size: 20px; font-weight: 800; margin: 0; letter-spacing: -0.5px; }
-          .subtitle { color: #64748b; font-size: 11px; font-weight: 600; margin-top: 4px; }
-          .rx-badge { background: #dcfce7; color: #15803d; font-weight: 800; padding: 4px 12px; border-radius: 20px; font-size: 11px; text-transform: uppercase; }
-          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background: #f1f5f9; padding: 14px 16px; border-radius: 10px; font-size: 12px; margin-bottom: 20px; }
-          .label { color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-          .val { font-weight: 700; color: #0f172a; margin-top: 2px; }
-          .med-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
-          .med-table th { background: #e0e7ff; color: #3730a3; text-align: left; padding: 10px; font-weight: 700; border-bottom: 2px solid #c7d2fe; }
-          .med-table td { padding: 12px 10px; border-bottom: 1px solid #e2e8f0; }
-          .notes-box { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 12px 16px; border-radius: 8px; font-size: 12px; margin-bottom: 20px; }
-          .footer { display: flex; justify-content: space-between; align-items: flex-end; border-t: 2px solid #e2e8f0; padding-top: 16px; margin-top: 24px; }
-          .sig { font-family: 'Georgia', serif; font-style: italic; font-size: 20px; color: #312e81; font-weight: bold; }
-        </style>
-      </head>
-      <body>
-        <div class="doc-card">
-          <div class="header">
-            <div>
-              <h1 class="title">🏥 SEHAT-LINK CLINICAL PRESCRIPTION</h1>
-              <div class="subtitle">Khed Primary Health Centre · OPD Clinical Department · License #PHC-MH-88412</div>
-            </div>
-            <div style="text-align: right;">
-              <span class="rx-badge">OFFICIAL CLINICAL RX</span>
-              <div style="font-family: monospace; font-size: 11px; color: #475569; margin-top: 6px;">File: ${fileName}</div>
-              <div style="font-size: 11px; color: #94a3b8;">Issued: ${dateStr}</div>
-            </div>
-          </div>
+function getPrescriptionFileUrl(rx: PrescriptionRow): string | null {
+  if (rx.file_url) return rx.file_url
+  if (rx.prescription_documents?.[0]?.file_url) return rx.prescription_documents[0].file_url
 
-          <div class="grid">
-            <div>
-              <div class="label">Patient Name & SEHAT Health ID</div>
-              <div class="val" style="color: #1d4ed8; font-size: 14px;">${patientName}</div>
-              <div style="font-family: monospace; font-weight: bold; color: #475569;">${sehatId}</div>
-            </div>
-            <div style="text-align: right;">
-              <div class="label">Prescribing Clinician</div>
-              <div class="val" style="font-size: 14px;">${doctorName}</div>
-              <div style="font-size: 11px; color: #64748b;">Reg: MCI-2015-88412 · MBBS, MD</div>
-            </div>
-          </div>
+  for (const item of (rx.prescription_items || [])) {
+    if (item.file_url) return item.file_url
+    if (item.instructions && item.instructions.includes('[FILE_URL:')) {
+      const match = item.instructions.match(/\[FILE_URL:(.*?)\]/)
+      if (match && match[1]) return match[1]
+    }
+  }
 
-          <div style="margin-bottom: 8px; font-weight: 800; font-size: 12px; color: #3730a3; uppercase; letter-spacing: 0.5px;">PRESCRIBED MEDICATIONS & CLINICAL ORDERS</div>
-          <table class="med-table">
-            <thead>
-              <tr>
-                <th>Medicine / Scanned Document Item</th>
-                <th>Dosage & Frequency</th>
-                <th>Duration</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${items.map(i => `
-                <tr>
-                  <td><strong style="color: #0f172a;">${i.medicine_name}</strong></td>
-                  <td>${i.dosage || 'As directed by physician'} · ${i.frequency || 'Daily'}</td>
-                  <td>${i.duration || '7 Days'}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+  if (rx.notes && rx.notes.includes('[FILE_URL:')) {
+    const match = rx.notes.match(/\[FILE_URL:(.*?)\]/)
+    if (match && match[1]) return match[1]
+  }
 
-          ${notes ? `<div class="notes-box"><strong>Doctor's Notes & Instructions:</strong><br/>${notes}</div>` : ''}
+  const fileName = rx.file_name || rx.prescription_items?.[0]?.medicine_name?.replace('Scanned Rx: ', '')
+  if (fileName && typeof window !== 'undefined') {
+    const localFile = localStorage.getItem(`sehat_file_${fileName}`)
+    if (localFile) return localFile
+  }
 
-          <div class="footer">
-            <div style="text-align: left;">
-              <div style="font-size: 10px; color: #15803d; font-weight: bold; background: #dcfce7; padding: 3px 8px; border-radius: 4px; display: inline-block;">✓ VERIFIED CLINICAL RX DOCUMENT</div>
-              <div style="font-size: 10px; color: #94a3b8; margin-top: 4px;">Digitally signed & SHA256 verified for pharmacy dispensing</div>
-            </div>
-            <div style="text-align: right;">
-              <div class="sig">${doctorName}</div>
-              <div style="font-size: 10px; color: #64748b; font-weight: bold; margin-top: 2px;">Authorized Medical Stamp & Signature</div>
-            </div>
-          </div>
-        </div>
-      </body>
-    </html>
-  `
-  return `data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`
+  return null
 }
 
 export default function PharmacyVerifyPage() {
@@ -225,6 +158,7 @@ export default function PharmacyVerifyPage() {
         id, status, type, created_at, notes, valid_until,
         doctor:profiles!prescriptions_doctor_id_fkey(full_name),
         prescription_items(id, medicine_name, dosage, frequency, duration, instructions, quantity),
+        prescription_documents(file_url, file_name, file_type),
         pharmacy_dispensing(id, status, dispensed_at)
       `)
       .eq('patient_id', patientData.id)
@@ -239,12 +173,13 @@ export default function PharmacyVerifyPage() {
         const localMap = new Map(localUploaded.map(u => [u.id, u]))
         rxList = rxList.map(r => {
           const local = localMap.get(r.id)
-          if (local && local.file_url) {
+          const localUrl = local ? getPrescriptionFileUrl(local) : null
+          if (localUrl) {
             return {
               ...r,
-              file_url: local.file_url,
-              file_name: local.file_name || r.file_name,
-              prescription_items: r.prescription_items?.map(i => ({ ...i, file_url: local.file_url }))
+              file_url: localUrl,
+              file_name: local?.file_name || r.file_name,
+              prescription_items: r.prescription_items?.map(i => ({ ...i, file_url: localUrl }))
             }
           }
           return r
@@ -364,22 +299,15 @@ export default function PharmacyVerifyPage() {
                     i.medicine_name?.toLowerCase().includes('scanned rx:') ||
                     i.medicine_name?.toLowerCase().includes('.pdf') ||
                     i.medicine_name?.toLowerCase().includes('.png') ||
-                    i.medicine_name?.toLowerCase().includes('.jpg')
+                    i.medicine_name?.toLowerCase().includes('.jpg') ||
+                    i.medicine_name?.toLowerCase().includes('.jpeg')
                   ) || rx.prescription_items[0]
 
-                  const fileName = rx.file_name || scannedItem?.file_name || scannedItem?.medicine_name?.replace('Scanned Rx: ', '') || 'INV-455736.pdf'
+                  const fileName = rx.file_name || scannedItem?.file_name || scannedItem?.medicine_name?.replace('Scanned Rx: ', '') || 'Scanned-Document'
                   const dateStr = new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
                   
-                  // Compute target document URL (or generate visual HTML PDF Data URL)
-                  const targetDocUrl = rx.file_url || scannedItem?.file_url || generatePrescriptionPdfDataUrl(
-                    fileName,
-                    doctorName,
-                    result.full_name,
-                    result.sehat_id,
-                    rx.notes || scannedItem?.instructions || '',
-                    rx.prescription_items,
-                    dateStr
-                  )
+                  // Extract EXACT raw file URL (Base64 data URL or HTTP link)
+                  const targetDocUrl = getPrescriptionFileUrl(rx)
 
                   return (
                     <div key={rx.id} className="card space-y-5 border-t-4 border-t-amber-400 shadow-md">
@@ -388,7 +316,7 @@ export default function PharmacyVerifyPage() {
                           <div className="flex items-center gap-2 mb-1">
                             <span className="badge bg-amber-100 text-amber-800 font-bold">Active Prescription</span>
                             <span className="badge bg-violet-100 text-violet-800 font-bold text-xs uppercase flex items-center gap-1">
-                              <FileCheck className="w-3.5 h-3.5 text-violet-600" /> SCANNED RX DOCUMENT
+                              <FileCheck className="w-3.5 h-3.5 text-violet-600" /> UPLOADED DOCUMENT
                             </span>
                           </div>
                           <p className="text-xs text-gray-600 font-medium mt-1">Prescribed by <strong>{doctorName}</strong></p>
@@ -399,47 +327,57 @@ export default function PharmacyVerifyPage() {
                         </span>
                       </div>
 
-                      {/* 100% VISIBLE INLINE PRESCRIPTION DOCUMENT PREVIEW DIRECTLY ON CARD */}
+                      {/* 100% VISIBLE INLINE UPLOADER DOCUMENT VIEW DIRECTLY ON CARD */}
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between bg-violet-900 text-white px-4 py-2.5 rounded-t-xl">
+                        <div className="flex items-center justify-between bg-slate-900 text-white px-4 py-2.5 rounded-t-xl">
                           <div className="flex items-center gap-2">
                             <FileText className="w-4 h-4 text-violet-300" />
-                            <span className="font-bold text-xs font-mono text-violet-100">DOCUMENT PREVIEW: {fileName}</span>
+                            <span className="font-bold text-xs font-mono text-violet-100">EXACT FILE UPLOADED BY DOCTOR: {fileName}</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <a
-                              href={targetDocUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="btn btn-xs bg-violet-700 hover:bg-violet-600 text-white text-[11px] font-bold flex items-center gap-1 py-1 px-2.5 rounded"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" /> Open in New Tab
-                            </a>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedPdfRx(rx)}
-                              className="btn btn-xs bg-white text-violet-900 hover:bg-violet-100 text-[11px] font-bold flex items-center gap-1 py-1 px-2.5 rounded"
-                            >
-                              <Eye className="w-3.5 h-3.5" /> Fullscreen
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="w-full h-[520px] bg-slate-900 border-2 border-t-0 border-violet-200 rounded-b-xl overflow-hidden shadow-inner flex items-center justify-center">
-                          {targetDocUrl.startsWith('data:image/') || targetDocUrl.match(/\.(png|jpg|jpeg|webp)$/i) ? (
-                            <img
-                              src={targetDocUrl}
-                              alt={fileName}
-                              className="max-w-full max-h-full object-contain p-2"
-                            />
-                          ) : (
-                            <iframe
-                              src={targetDocUrl}
-                              className="w-full h-full border-0 bg-white"
-                              title={`Prescription Document - ${fileName}`}
-                            />
+                          {targetDocUrl && (
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={targetDocUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn-xs bg-violet-600 hover:bg-violet-700 text-white text-[11px] font-bold flex items-center gap-1 py-1 px-2.5 rounded"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" /> Open Raw File ↗
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedPdfRx(rx)}
+                                className="btn btn-xs bg-white text-violet-900 hover:bg-violet-100 text-[11px] font-bold flex items-center gap-1 py-1 px-2.5 rounded"
+                              >
+                                <Eye className="w-3.5 h-3.5" /> Fullscreen
+                              </button>
+                            </div>
                           )}
                         </div>
+
+                        {targetDocUrl ? (
+                          <div className="w-full h-[520px] bg-slate-950 border-2 border-t-0 border-slate-700 rounded-b-xl overflow-hidden shadow-inner flex items-center justify-center">
+                            {targetDocUrl.startsWith('data:image/') || targetDocUrl.match(/\.(png|jpg|jpeg|webp)$/i) ? (
+                              <img
+                                src={targetDocUrl}
+                                alt={fileName}
+                                className="max-w-full max-h-full object-contain p-2"
+                              />
+                            ) : (
+                              <iframe
+                                src={targetDocUrl}
+                                className="w-full h-full border-0 bg-white"
+                                title={`Uploaded Document - ${fileName}`}
+                              />
+                            )}
+                          </div>
+                        ) : (
+                          <div className="border-2 border-dashed border-amber-300 rounded-b-xl p-8 bg-amber-50/50 text-center space-y-2">
+                            <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
+                            <p className="font-bold text-amber-900 text-sm">No raw uploaded document stream found for this item</p>
+                            <p className="text-xs text-amber-700">Please ask the prescribing doctor to upload the scanned prescription document via the Doctor Portal.</p>
+                          </div>
+                        )}
                       </div>
 
                       {isDispensedState ? (
@@ -459,7 +397,7 @@ export default function PharmacyVerifyPage() {
                                   <p className="text-xs text-gray-500 mt-0.5">
                                     {[item.dosage, item.frequency, item.duration].filter(Boolean).join(' · ')}
                                   </p>
-                                  {item.instructions && (
+                                  {item.instructions && !item.instructions.includes('[FILE_URL:') && (
                                     <p className="text-xs text-amber-700 mt-0.5 italic font-medium">{item.instructions}</p>
                                   )}
                                 </div>
@@ -470,7 +408,7 @@ export default function PharmacyVerifyPage() {
                             ))}
                           </div>
 
-                          {rx.notes && (
+                          {rx.notes && !rx.notes.includes('[FILE_URL:') && (
                             <div className="p-3 bg-yellow-50 border border-yellow-100 rounded-lg text-xs text-yellow-800">
                               <strong>Doctor&apos;s Note:</strong> {rx.notes}
                             </div>
@@ -509,73 +447,74 @@ export default function PharmacyVerifyPage() {
 
           {/* Full Interactive PDF Prescription Inspection Modal */}
           {selectedPdfRx && (
-            <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
-              <div className="bg-white rounded-2xl max-w-4xl w-full overflow-hidden shadow-2xl space-y-0 my-8">
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+              <div className="bg-slate-900 rounded-2xl max-w-5xl w-full overflow-hidden shadow-2xl space-y-0 my-8 border border-slate-700">
                 {/* Header */}
-                <div className="bg-violet-900 text-white p-4 flex items-center justify-between">
+                <div className="bg-slate-950 text-white p-4 flex items-center justify-between border-b border-slate-800">
                   <div className="flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-violet-300" />
+                    <FileText className="w-5 h-5 text-violet-400" />
                     <div>
-                      <h3 className="font-bold text-base leading-tight">Prescription Document Fullscreen Inspector</h3>
-                      <p className="text-xs text-violet-200 font-mono">
-                        {selectedPdfRx.file_name || selectedPdfRx.prescription_items[0]?.medicine_name?.replace('Scanned Rx: ', '') || 'Scanned-Rx.pdf'}
+                      <h3 className="font-bold text-base leading-tight text-white">Exact Uploaded Prescription File Inspector</h3>
+                      <p className="text-xs text-violet-300 font-mono">
+                        {selectedPdfRx.file_name || selectedPdfRx.prescription_items[0]?.medicine_name?.replace('Scanned Rx: ', '') || 'Uploaded-File'}
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() => setSelectedPdfRx(null)}
-                    className="p-1 rounded-lg hover:bg-white/10 text-violet-200 hover:text-white transition-colors"
+                    className="p-1 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                {/* Printable Document Preview Area */}
-                <div className="p-4 bg-gray-900 space-y-4 max-h-[75vh] overflow-y-auto">
+                {/* Document Area */}
+                <div className="p-4 bg-slate-950 flex items-center justify-center min-h-[600px] max-h-[78vh] overflow-auto">
                   {(() => {
-                    const doctorName = Array.isArray(selectedPdfRx.doctor) ? selectedPdfRx.doctor[0]?.full_name : (selectedPdfRx.doctor?.full_name || 'Dr. Rajesh Sharma')
-                    const fileName = selectedPdfRx.file_name || selectedPdfRx.prescription_items[0]?.medicine_name?.replace('Scanned Rx: ', '') || 'INV-455736.pdf'
-                    const dateStr = new Date(selectedPdfRx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                    const targetDocUrl = getPrescriptionFileUrl(selectedPdfRx)
+                    const fileName = selectedPdfRx.file_name || selectedPdfRx.prescription_items[0]?.medicine_name?.replace('Scanned Rx: ', '') || 'Uploaded-File'
 
-                    const targetDocUrl = selectedPdfRx.file_url || selectedPdfRx.prescription_items[0]?.file_url || generatePrescriptionPdfDataUrl(
-                      fileName,
-                      doctorName,
-                      result?.full_name || 'Patient',
-                      result?.sehat_id || 'SL-MH-2026-000001',
-                      selectedPdfRx.notes || selectedPdfRx.prescription_items[0]?.instructions || '',
-                      selectedPdfRx.prescription_items,
-                      dateStr
-                    )
+                    if (!targetDocUrl) {
+                      return (
+                        <div className="text-center p-12 text-slate-400 space-y-2">
+                          <AlertTriangle className="w-10 h-10 text-amber-400 mx-auto" />
+                          <p className="font-bold text-white text-base">No file binary stream attached</p>
+                          <p className="text-xs">No raw uploaded document stream was found for this prescription item.</p>
+                        </div>
+                      )
+                    }
+
+                    if (targetDocUrl.startsWith('data:image/') || targetDocUrl.match(/\.(png|jpg|jpeg|webp)$/i)) {
+                      return (
+                        <img
+                          src={targetDocUrl}
+                          alt={fileName}
+                          className="max-w-full max-h-[70vh] object-contain rounded shadow-2xl border border-slate-800"
+                        />
+                      )
+                    }
 
                     return (
-                      <div className="w-full h-[650px] bg-slate-950 rounded-xl overflow-hidden shadow-xl border border-gray-700 flex items-center justify-center">
-                        {targetDocUrl.startsWith('data:image/') || targetDocUrl.match(/\.(png|jpg|jpeg|webp)$/i) ? (
-                          <img
-                            src={targetDocUrl}
-                            alt={fileName}
-                            className="max-w-full max-h-full object-contain p-2"
-                          />
-                        ) : (
-                          <iframe
-                            src={targetDocUrl}
-                            className="w-full h-full border-0 bg-white"
-                            title="Fullscreen Prescription Document"
-                          />
-                        )}
+                      <div className="w-full h-[680px] bg-white rounded-xl overflow-hidden shadow-xl border border-slate-800">
+                        <iframe
+                          src={targetDocUrl}
+                          className="w-full h-full border-0 bg-white"
+                          title={`Fullscreen Document - ${fileName}`}
+                        />
                       </div>
                     )
                   })()}
                 </div>
 
                 {/* Footer Controls */}
-                <div className="p-4 bg-gray-100 border-t flex justify-between items-center">
-                  <span className="text-xs text-gray-500 font-medium">Document Status: Ready for Pharmacy Dispensing</span>
+                <div className="p-4 bg-slate-950 border-t border-slate-800 flex justify-between items-center text-slate-300">
+                  <span className="text-xs text-slate-400 font-medium">Original File Uploaded by Doctor</span>
                   <div className="flex gap-2">
                     <button
                       onClick={() => window.print()}
-                      className="btn btn-sm btn-outline flex items-center gap-1.5"
+                      className="btn btn-sm btn-outline text-white border-slate-700 hover:bg-slate-800 flex items-center gap-1.5"
                     >
-                      <Printer className="w-4 h-4" /> Print Document
+                      <Printer className="w-4 h-4" /> Print Original File
                     </button>
                     <button
                       onClick={() => setSelectedPdfRx(null)}
